@@ -1,0 +1,81 @@
+version: '3.0'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    hostname: rabbitmq
+    volumes:
+      - /var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - ./rabbitmq.env
+#    networks:
+#      - rabbitmq_net
+
+  profile-service:
+    image: profile-service:01
+    env_file:
+      - .development.env
+    volumes:
+      - ./app:/usr/src/app
+      - /app/node_modules
+    ports:
+      - 5000:5000
+      - 9229:9229
+    command: npm run start:dev
+    depends_on:
+      - postgres
+    restart: always
+    networks:
+      - rabbitmq_net
+      - pg_net
+
+  auth-user-service:
+    image: auth-user-service:01
+    env_file:
+      - .development.env
+    volumes:
+      - ./app:/usr/src/app
+      - /app/node_modules
+    ports:
+      - 5001:5001
+      - 9230:9230
+    command: npm run start:dev
+    depends_on:
+      - postgres
+    restart: always
+    networks:
+      - rabbitmq_net
+      - pg_net
+
+
+  postgres:
+    container_name: postgres
+    image: postgres:14
+    env_file:
+      - .development.env
+    environment:
+      PG_DATA: /var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - pg_net
+
+networks:
+  rabbitmq_net:
+    driver: bridge
+  pg_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+
+
